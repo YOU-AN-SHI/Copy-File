@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Copy Progress</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  
+  .container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 400px;
+  }
+
+  h2 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  input[type="file"],
+  input[type="text"] {
+    display: block;
+    margin: 0 auto 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: calc(100% - 24px);
+  }
+
+  button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+  }
+
+  button:hover {
+    background-color: #45a049;
+  }
+
+  .progress {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+
+  .bar {
+    height: 100%;
+    background-color: #75b5d7;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+    width: 0;
+  }
+
+  .alert {
+    margin-top: 20px;
+    padding: 10px;
+    color: white;
+    border-radius: 4px;
+    display: none;
+  }
+
+  .alert.success {
+    background-color: #4caf50;
+  }
+
+  .alert.error {
+    background-color: #f44336;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Copy File</h2>
+  <label for="fileInput">選擇欲上傳檔案:</label>
+  <input type="file" id="fileInput"><br><br>
+  <label for="destination">儲存目的地:</label>
+  <input type="text" id="destination" placeholder="/path/to/destination"><br><br>
+  <button onclick="copyFile()">Copy</button>
+  <div class="progress" style="display: none;">
+    <div class="bar" id="progressBar">0%</div>
+  </div>
+  <div class="alert" id="alert"></div>
+</div>
+
+<script>
+  // 如果重新選擇檔案或目的地，會reset進度條和提示
+  document.getElementById('fileInput').addEventListener('change', resetUI);
+  document.getElementById('destination').addEventListener('input', resetUI);
+
+  function resetUI() {
+    document.querySelector('.progress').style.display = 'none';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressBar').innerHTML = '0%';
+    document.getElementById('alert').style.display = 'none';
+  }
+
+  function copyFile() {
+    var progressBar = document.getElementById('progressBar');
+    var fileInput = document.getElementById('fileInput');
+    var file = fileInput.files[0];
+    var destination = document.getElementById('destination').value;
+    
+
+    if (!file) { // 如果沒選擇檔案則顯示警告
+      showAlert('Please select a file.', 'error');
+      return;
+    }
+
+    if (!destination) { // 如果沒填目的地則顯示警告
+      showAlert('Please enter a destination.', 'error');
+      return;
+    }
+
+    // 打包資料傳給後端
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('destination', destination);
+
+    var xhr = new XMLHttpRequest();
+    
+    // 取得進度，顯示進度條
+    xhr.upload.onprogress = function(event) {
+      if (event.lengthComputable) {
+        var percentComplete = (event.loaded / event.total) * 100;
+        progressBar.style.width = percentComplete + '%';
+        progressBar.innerHTML = percentComplete.toFixed(2) + '%';
+      }
+    };
+
+    xhr.onload = function() {
+      if (xhr.status === 200) { // 狀態判斷
+        showAlert(file.name + ' is successfully copied to ' + destination + '.', 'success');
+      } else {
+        showAlert('Error copying file: ' + xhr.statusText, 'error');
+      }
+    };
+
+    xhr.onerror = function() {
+      showAlert('Error copying file.', 'error');
+    };
+
+    xhr.open('POST', '/upload', true);
+    xhr.send(formData);
+
+    document.querySelector('.progress').style.display = 'block';
+  }
+
+  // 顯示提示
+  function showAlert(message, type) {
+    var alertBox = document.getElementById('alert');
+    alertBox.innerHTML = message;
+    alertBox.className = 'alert ' + type;
+    alertBox.style.display = 'block';
+  }
+</script>
+</body>
+</html>
